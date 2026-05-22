@@ -119,6 +119,7 @@ export function ExerciseDatabase({ onSelectExercise, selectionMode = false, onCa
                                   src={ex.image} 
                                   alt={ex.name} 
                                   className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500" 
+                                  referrerPolicy="no-referrer"
                                 />
                               )}
                               <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent"></div>

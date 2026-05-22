@@ -27,10 +27,17 @@ export interface WorkoutExercise {
   sets: SetData[];
 }
 
+export interface WorkoutTemplate {
+  id: string;
+  name: string;
+  exercises: WorkoutExercise[];
+}
+
 export interface Workout {
   id: string;
   startTime: number;
   endTime?: number;
   duration?: number;
+  notes?: string;
   exercises: WorkoutExercise[];
 }

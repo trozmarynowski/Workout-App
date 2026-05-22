@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { formatTime, formatDate } from '../utils';
-import { Workout, WorkoutExercise } from '../types';
-import { Calendar, Clock, ChevronRight, Dumbbell, History, Trash2, Search, Trophy, TrendingUp, TrendingDown } from 'lucide-react';
+import { formatTime, formatDate, generateId } from '../utils';
+import { Workout, WorkoutExercise, WorkoutTemplate } from '../types';
+import { Calendar, Clock, ChevronRight, Dumbbell, History, Trash2, Search, Trophy, TrendingUp, TrendingDown, FileText, Check, Edit2, Activity, BookmarkPlus } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface HistoryListProps {
   key?: React.Key;
   workouts: Workout[];
   onDeleteWorkout: (id: string) => void;
+  onUpdateWorkout: (workout: Workout) => void;
+  onSaveTemplate?: (template: WorkoutTemplate) => void;
 }
 
 function getExerciseStats(allWorkouts: Workout[], workoutId: string, exerciseId: string) {
@@ -31,7 +34,7 @@ function getExerciseStats(allWorkouts: Workout[], workoutId: string, exerciseId:
 
   // Calculate current volume
   currentWe.sets.filter(s => s.completed).forEach(s => {
-    currentVolume += (s.weight || 0) * (s.reps || 0);
+    currentVolume += (Number(s.weight) || 0) * (Number(s.reps) || 0);
   });
 
   // Calculate stats
@@ -48,8 +51,8 @@ function getExerciseStats(allWorkouts: Workout[], workoutId: string, exerciseId:
 
     let vol = 0;
     we.sets.filter(s => s.completed).forEach(s => {
-      const weight = s.weight || 0;
-      const reps = s.reps || 0;
+      const weight = Number(s.weight) || 0;
+      const reps = Number(s.reps) || 0;
       
       if (weight > maxWeight) maxWeight = weight;
       if (reps > maxReps) maxReps = reps;
@@ -67,7 +70,7 @@ function getExerciseStats(allWorkouts: Workout[], workoutId: string, exerciseId:
 
   if (previousWe) {
     previousWe.sets.filter(s => s.completed).forEach(s => {
-      prevVolume += (s.weight || 0) * (s.reps || 0);
+      prevVolume += (Number(s.weight) || 0) * (Number(s.reps) || 0);
     });
   }
 
@@ -88,12 +91,78 @@ function getExerciseStats(allWorkouts: Workout[], workoutId: string, exerciseId:
   };
 }
 
-export function HistoryList({ workouts, onDeleteWorkout }: HistoryListProps) {
+export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSaveTemplate }: HistoryListProps) {
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState('');
+  const [showSaveTemplatePrompt, setShowSaveTemplatePrompt] = useState(false);
+  const [templateNameDraft, setTemplateNameDraft] = useState('');
+
+  const [activeTab, setActiveTab] = useState<'history' | 'progress'>('history');
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string>('');
+
+  const allExercises = useMemo(() => {
+    const exercisesMap = new Map<string, { id: string, name: string }>();
+    workouts.forEach(w => {
+      w.exercises.forEach(we => {
+        if (we.sets.some(s => s.completed)) {
+          exercisesMap.set(we.exercise.id, { id: we.exercise.id, name: we.exercise.name });
+        }
+      });
+    });
+    return Array.from(exercisesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [workouts]);
+
+  // Set default selected exercise
+  React.useEffect(() => {
+    if (!selectedExerciseId && allExercises.length > 0) {
+      setSelectedExerciseId(allExercises[0].id);
+    }
+  }, [allExercises, selectedExerciseId]);
+
+  const chartData = useMemo(() => {
+    if (!selectedExerciseId) return [];
+    
+    const data: any[] = [];
+    const chronoSorted = [...workouts].sort((a, b) => a.startTime - b.startTime);
+    
+    for (const w of chronoSorted) {
+      const we = w.exercises.find(e => e.exercise.id === selectedExerciseId);
+      if (we) {
+        const completedSets = we.sets.filter(s => s.completed);
+        if (completedSets.length > 0) {
+          const maxObjW = Math.max(...completedSets.map(s => Number(s.weight) || 0));
+          const maxW = maxObjW === 0 ? null : maxObjW;
+          
+          let vol = 0;
+          let maxReps = 0;
+          completedSets.forEach(s => {
+             const w = Number(s.weight) || 0;
+             const r = Number(s.reps) || 0;
+             vol += w * r;
+             if (r > maxReps) maxReps = r;
+          });
+
+          const d = new Date(w.startTime);
+          const dateStr = `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth()+1).toString().padStart(2, '0')}`;
+          
+          data.push({
+            date: dateStr,
+            fullDate: w.startTime,
+            maxWeight: maxW,
+            volume: vol,
+            maxReps: maxReps
+          });
+        }
+      }
+    }
+    return data;
+  }, [workouts, selectedExerciseId]);
 
   const sortedWorkouts = [...workouts].sort((a, b) => b.startTime - a.startTime);
   
@@ -152,6 +221,7 @@ export function HistoryList({ workouts, onDeleteWorkout }: HistoryListProps) {
                     }
                     setShowConfirmDelete(null);
                     setSelectedWorkout(null);
+                    setIsEditingNotes(false);
                   }}
                   className="flex-1 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold rounded-xl transition-colors border border-red-500/20"
                 >
@@ -164,25 +234,149 @@ export function HistoryList({ workouts, onDeleteWorkout }: HistoryListProps) {
 
         <div className="flex items-center justify-between mb-6">
           <button 
-            onClick={() => setSelectedWorkout(null)}
+            onClick={() => {
+              setSelectedWorkout(null);
+              setIsEditingNotes(false);
+              setShowSaveTemplatePrompt(false);
+            }}
             className="text-neutral-400 font-medium text-sm flex items-center uppercase tracking-wider"
           >
             <ChevronRight className="rotate-180 mr-1" size={16} /> Wróć do listy
           </button>
           
-          <button
-            onClick={() => setShowConfirmDelete(selectedWorkout.id)}
-            className="text-red-500 hover:text-red-400 p-2 rounded-full bg-neutral-900 border border-neutral-800"
-          >
-            <Trash2 size={16} />
-          </button>
+          <div className="flex gap-2">
+            {onSaveTemplate && (
+              <button
+                onClick={() => {
+                  setTemplateNameDraft(`Trening: ${formatDate(selectedWorkout.startTime)}`);
+                  setShowSaveTemplatePrompt(true);
+                }}
+                className="text-neutral-400 hover:text-white p-2 text-xs flex items-center gap-1 rounded-full bg-neutral-900 border border-neutral-800 transition-colors"
+                title="Zapisz jako szablon"
+              >
+                <BookmarkPlus size={16} />
+              </button>
+            )}
+            <button
+              onClick={() => setShowConfirmDelete(selectedWorkout.id)}
+              className="text-red-500 hover:text-red-400 p-2 rounded-full bg-neutral-900 border border-neutral-800 transition-colors"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
         </div>
 
+        <AnimatePresence>
+          {showSaveTemplatePrompt && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mb-8 overflow-hidden"
+            >
+              <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-lg">
+                <h3 className="font-bold text-white text-lg mb-2 flex items-center gap-2">
+                  <BookmarkPlus size={18} className="text-neon" /> Nowy Szablon
+                </h3>
+                <p className="text-neutral-400 text-sm mb-4">Zapisz ten trening jako szablon, aby móc szybko wracać do tego samego planu z zapisanymi ciężarami i powtórzeniami.</p>
+                <input
+                  type="text"
+                  value={templateNameDraft}
+                  onChange={(e) => setTemplateNameDraft(e.target.value)}
+                  placeholder="Nazwa szablonu..."
+                  className="w-full bg-neutral-950 border border-neutral-800 text-white rounded-xl py-3 px-4 focus:outline-none focus:border-neon focus:ring-1 focus:ring-neon mb-4 font-bold"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowSaveTemplatePrompt(false)}
+                    className="px-4 py-2 text-sm font-bold text-neutral-400 hover:text-white transition-colors"
+                  >
+                    Anuluj
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (templateNameDraft.trim() && onSaveTemplate) {
+                        onSaveTemplate({
+                          id: generateId(),
+                          name: templateNameDraft.trim(),
+                          exercises: selectedWorkout.exercises,
+                        });
+                        setShowSaveTemplatePrompt(false);
+                      }
+                    }}
+                    className="px-4 py-2 text-sm font-bold bg-neon text-black rounded-lg hover:brightness-110 flex items-center gap-1 transition-all"
+                  >
+                    <Check size={16} /> Zapisz
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <h2 className="text-3xl font-bold mb-2 text-white">Podsumowanie</h2>
-        <div className="flex items-center gap-4 text-neutral-400 text-sm mb-8 font-mono">
+        <div className="flex items-center gap-4 text-neutral-400 text-sm mb-6 font-mono">
           <span className="flex items-center gap-1"><Calendar size={14} /> {formatDate(selectedWorkout.startTime)}</span>
           {selectedWorkout.duration && (
             <span className="flex items-center gap-1"><Clock size={14} /> {formatTime(selectedWorkout.duration)}</span>
+          )}
+        </div>
+
+        {/* Notes Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-bold text-white text-lg flex items-center gap-2">
+              <FileText size={18} className="text-neon" /> Notatki
+            </h3>
+            {!isEditingNotes && (
+              <button
+                onClick={() => {
+                  setNotesDraft(selectedWorkout.notes || '');
+                  setIsEditingNotes(true);
+                }}
+                className="text-neutral-400 hover:text-white flex items-center gap-1 text-sm bg-neutral-900 border border-neutral-800 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Edit2 size={14} /> {selectedWorkout.notes ? 'Edytuj' : 'Dodaj notatkę'}
+              </button>
+            )}
+          </div>
+          
+          {isEditingNotes ? (
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
+              <textarea
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                placeholder="Jak poszedł trening? Jakieś uwagi?"
+                className="w-full bg-transparent text-white placeholder-neutral-500 focus:outline-none resize-none min-h-[100px] mb-3 text-sm leading-relaxed"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setIsEditingNotes(false)}
+                  className="px-4 py-2 text-sm font-bold text-neutral-400 hover:text-white transition-colors"
+                >
+                  Anuluj
+                </button>
+                <button
+                  onClick={() => {
+                    const updated = { ...selectedWorkout, notes: notesDraft.trim() };
+                    onUpdateWorkout(updated);
+                    setSelectedWorkout(updated);
+                    setIsEditingNotes(false);
+                  }}
+                  className="px-4 py-2 text-sm font-bold bg-neon text-black rounded-lg hover:brightness-110 flex items-center gap-1 transition-all"
+                >
+                  <Check size={16} /> Zapisz
+                </button>
+              </div>
+            </div>
+          ) : (
+            selectedWorkout.notes && (
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-4">
+                <p className="text-neutral-300 text-sm whitespace-pre-wrap leading-relaxed">{selectedWorkout.notes}</p>
+              </div>
+            )
           )}
         </div>
 
@@ -242,8 +436,8 @@ export function HistoryList({ workouts, onDeleteWorkout }: HistoryListProps) {
                       const prevSets = stats.previousWe.sets.filter(s => s.completed);
                       const prevSet = prevSets[idx];
                       if (prevSet) {
-                        const weightDiff = (set.weight || 0) - (prevSet.weight || 0);
-                        const repsDiff = (set.reps || 0) - (prevSet.reps || 0);
+                        const weightDiff = (Number(set.weight) || 0) - (Number(prevSet.weight) || 0);
+                        const repsDiff = (Number(set.reps) || 0) - (Number(prevSet.reps) || 0);
 
                         if (weightDiff !== 0) {
                           const isPos = weightDiff > 0;
@@ -284,9 +478,102 @@ export function HistoryList({ workouts, onDeleteWorkout }: HistoryListProps) {
       exit={{ opacity: 0, y: -10 }}
       className="pb-24 pt-8 px-4"
     >
-      <h1 className="text-3xl font-bold mb-6 text-white px-2 tracking-tight">Historia</h1>
+      <div className="flex items-center justify-between mb-6 px-2 tracking-tight">
+        <h1 className="text-3xl font-bold text-white">Historia</h1>
+        <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800">
+          <button 
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === 'history' ? 'bg-neutral-800 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-300'}`}
+          >
+            <History size={14} /> Lista
+          </button>
+          <button 
+            onClick={() => setActiveTab('progress')}
+            className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center gap-1.5 ${activeTab === 'progress' ? 'bg-neutral-800 text-white shadow-sm' : 'text-neutral-500 hover:text-neutral-300'}`}
+          >
+            <Activity size={14} /> Progres
+          </button>
+        </div>
+      </div>
 
-      <div className="px-2 mb-8 space-y-3">
+      {activeTab === 'progress' ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="px-2"
+        >
+          {allExercises.length === 0 ? (
+            <div className="text-center text-neutral-500 mt-20 px-6">
+              <TrendingUp size={48} className="mx-auto mb-4 opacity-20" />
+              <p className="text-lg">Brak danych do wykresu.</p>
+              <p className="text-sm mt-2">Zacznij ćwiczyć, aby zobaczyć swój progres.</p>
+            </div>
+          ) : (
+            <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-2xl shadow-sm">
+              <label className="block text-sm font-bold text-neutral-400 uppercase tracking-wider mb-3">Wybierz ćwiczenie</label>
+              <div className="relative mb-8">
+                <select 
+                  value={selectedExerciseId}
+                  onChange={(e) => setSelectedExerciseId(e.target.value)}
+                  className="w-full bg-neutral-800 border border-neutral-700 text-white rounded-xl py-3 pl-4 pr-10 appearance-none focus:outline-none focus:border-neon focus:ring-1 focus:ring-neon font-bold"
+                >
+                  {allExercises.map(ex => (
+                    <option key={ex.id} value={ex.id}>{ex.name}</option>
+                  ))}
+                </select>
+                <ChevronRight size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-neutral-500 rotate-90 pointer-events-none" />
+              </div>
+              
+              {chartData.length < 2 ? (
+                <div className="h-64 flex items-center justify-center text-neutral-500 border border-neutral-800/50 rounded-xl bg-neutral-950/30 text-sm">
+                  Potrzeba minimum dwóch treningów.
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2"><Trophy size={14} className="text-neon" /> Maksymalny ciężar (kg)</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                          <XAxis dataKey="date" stroke="#525252" fontSize={10} tickMargin={10} axisLine={false} tickLine={false} />
+                          <YAxis stroke="#525252" fontSize={10} tickMargin={10} axisLine={false} tickLine={false} domain={['dataMin - 5', 'dataMax + 5']} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#171717', borderColor: '#262626', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}
+                            itemStyle={{ color: '#D1FA71' }}
+                            cursor={{ stroke: '#404040' }}
+                          />
+                          <Line type="monotone" dataKey="maxWeight" name="Ciężar" stroke="#D1FA71" strokeWidth={3} dot={{ r: 4, fill: '#D1FA71', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#D1FA71' }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                  <div className="border-t border-neutral-800 pt-6">
+                    <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2"><Dumbbell size={14} className="text-neon" /> Objętość na trening (kg)</h3>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                          <XAxis dataKey="date" stroke="#525252" fontSize={10} tickMargin={10} axisLine={false} tickLine={false} />
+                          <YAxis stroke="#525252" fontSize={10} tickMargin={10} axisLine={false} tickLine={false} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#171717', borderColor: '#262626', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}
+                            itemStyle={{ color: '#60A5FA' }}
+                            cursor={{ stroke: '#404040' }}
+                          />
+                          <Line type="monotone" dataKey="volume" name="Objętość" stroke="#60A5FA" strokeWidth={2} dot={{ r: 3, fill: '#60A5FA', strokeWidth: 0 }} activeDot={{ r: 5, fill: '#60A5FA' }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      ) : (
+        <>
+          <div className="px-2 mb-8 space-y-3">
         <label className="relative block">
           <span className="absolute inset-y-0 left-4 flex items-center text-neutral-500">
             <Search size={18} />
@@ -358,6 +645,11 @@ export function HistoryList({ workouts, onDeleteWorkout }: HistoryListProps) {
                     <span className="flex items-center gap-1.5 bg-neutral-950 px-2.5 py-1 rounded-md border border-neutral-800">
                       <Dumbbell size={12} className="text-neon" /> {completedExercisesCount} ćw.
                     </span>
+                    {workout.notes && (
+                      <span className="flex items-center gap-1.5 bg-neutral-950 px-2.5 py-1 rounded-md border border-neutral-800">
+                        <FileText size={12} className="text-blue-400" />
+                      </span>
+                    )}
                   </div>
                 </div>
                 <ChevronRight className="text-neutral-600 group-hover:text-neon transition-colors" />
@@ -365,6 +657,8 @@ export function HistoryList({ workouts, onDeleteWorkout }: HistoryListProps) {
             );
           })}
         </div>
+      )}
+      </>
       )}
     </motion.div>
   );

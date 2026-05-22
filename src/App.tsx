@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
-import { Screen, Workout } from './types';
+import { Screen, Workout, WorkoutTemplate } from './types';
 import { generateId } from './utils';
 
 import { Dashboard } from './components/Dashboard';
@@ -12,6 +12,7 @@ import { TabBar } from './components/TabBar';
 export default function App() {
   const [screen, setScreen] = useState<Screen>('dashboard');
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
   const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -24,6 +25,10 @@ export default function App() {
       const savedActive = localStorage.getItem('wt_active_workout');
       if (savedActive) {
         setActiveWorkout(JSON.parse(savedActive));
+      }
+      const savedTemplates = localStorage.getItem('wt_templates');
+      if (savedTemplates) {
+        setTemplates(JSON.parse(savedTemplates));
       }
     } catch (e) {
       console.error('Failed to load from local storage', e);
@@ -38,6 +43,11 @@ export default function App() {
 
   useEffect(() => {
     if (!isLoaded) return;
+    localStorage.setItem('wt_templates', JSON.stringify(templates));
+  }, [templates, isLoaded]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
     if (activeWorkout) {
       localStorage.setItem('wt_active_workout', JSON.stringify(activeWorkout));
     } else {
@@ -49,11 +59,27 @@ export default function App() {
     setWorkouts(workouts.filter(w => w.id !== id));
   };
 
-  const startWorkout = () => {
+  const updateWorkout = (updatedWorkout: Workout) => {
+    setWorkouts(workouts.map(w => w.id === updatedWorkout.id ? updatedWorkout : w));
+  };
+
+  const saveTemplate = (template: WorkoutTemplate) => {
+    setTemplates([...templates, template]);
+  };
+
+  const deleteTemplate = (id: string) => {
+    setTemplates(templates.filter(t => t.id !== id));
+  };
+
+  const startWorkout = (template?: WorkoutTemplate) => {
     const newWorkout: Workout = {
       id: generateId(),
       startTime: Date.now(),
-      exercises: []
+      exercises: template ? template.exercises.map(e => ({
+        ...e,
+        // Reset completion status for the new workout, keep weight/reps from template
+        sets: e.sets.map(s => ({ ...s, completed: false, id: generateId() }))
+      })) : []
     };
     setActiveWorkout(newWorkout);
     setScreen('workout');
@@ -73,9 +99,11 @@ export default function App() {
         {screen === 'dashboard' && (
           <Dashboard 
             key="dashboard"
+            templates={templates}
             onStartWorkout={startWorkout} 
             hasActiveWorkout={!!activeWorkout} 
             onResumeWorkout={() => setScreen('workout')} 
+            onDeleteTemplate={deleteTemplate}
           />
         )}
         
@@ -99,6 +127,8 @@ export default function App() {
             key="history" 
             workouts={workouts} 
             onDeleteWorkout={deleteWorkout} 
+            onUpdateWorkout={updateWorkout}
+            onSaveTemplate={saveTemplate}
           />
         )}
       </AnimatePresence>

@@ -4,6 +4,7 @@ import { Workout, WorkoutExercise, SetData, Exercise } from '../types';
 import { formatTime, generateId } from '../utils';
 import { Play, Plus, Trash2, Check, X, Timer } from 'lucide-react';
 import { ExerciseDatabase } from './ExerciseDatabase';
+import { RestTimer } from './RestTimer';
 
 interface WorkoutActiveProps {
   key?: React.Key;
@@ -15,6 +16,7 @@ interface WorkoutActiveProps {
 export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: WorkoutActiveProps) {
   const [elapsed, setElapsed] = useState(0);
   const [showAddExercise, setShowAddExercise] = useState(false);
+  const [showRestTimer, setShowRestTimer] = useState(false);
 
   useEffect(() => {
     const updateElapsed = () => {
@@ -96,6 +98,7 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
   };
 
   const handleToggleSet = (exerciseId: string, setId: string) => {
+    let nowCompleted = false;
     onUpdateWorkout({
       ...workout,
       exercises: workout.exercises.map(e => {
@@ -104,6 +107,7 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
             ...e,
             sets: e.sets.map(s => {
               if (s.id === setId) {
+                if (!s.completed) nowCompleted = true;
                 return { ...s, completed: !s.completed };
               }
               return s;
@@ -113,6 +117,9 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
         return e;
       })
     });
+    if (nowCompleted) {
+      setShowRestTimer(true);
+    }
   };
 
   const handleRemoveSet = (exerciseId: string, setId: string) => {
@@ -148,9 +155,17 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
     >
       {/* Sticky Header */}
       <div className="sticky top-0 z-40 bg-[#050505]/90 backdrop-blur-md border-b border-neutral-900 px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3 text-neon font-mono text-xl tracking-wider">
-          <Timer size={24} />
-          {formatTime(elapsed)}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-neon font-mono text-xl tracking-wider">
+            <Timer size={24} />
+            {formatTime(elapsed)}
+          </div>
+          <button
+            onClick={() => setShowRestTimer(!showRestTimer)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-mono font-bold uppercase tracking-wider transition-colors ${showRestTimer ? 'bg-neon/10 border-neon/30 text-neon' : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white'}`}
+          >
+            Pauza
+          </button>
         </div>
         <button 
           onClick={finish}
@@ -268,6 +283,12 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
           onCancel={() => setShowAddExercise(false)} 
         />
       )}
+
+      <AnimatePresence>
+        {showRestTimer && (
+          <RestTimer onDismiss={() => setShowRestTimer(false)} />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

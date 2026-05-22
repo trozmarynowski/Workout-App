@@ -17,11 +17,11 @@ export const EXERCISES: Exercise[] = [
   { id: 'c4', name: 'Rozpiętki hantlami', muscleGroup: 'Klatka piersiowa', image: 'https://images.unsplash.com/photo-1603287681836-b174ce5074c2?q=80&w=800&auto=format&fit=crop' },
   { id: 'c5', name: 'Pompki', muscleGroup: 'Klatka piersiowa', image: 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?q=80&w=800&auto=format&fit=crop' },
   { id: 'c6', name: 'Maszyna chest press', muscleGroup: 'Klatka piersiowa', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=800&auto=format&fit=crop' },
-  { id: 'c7', name: 'Pompki na poręczach', muscleGroup: 'Klatka piersiowa', image: 'https://images.unsplash.com/photo-1526506169004-9279ca84a282?q=80&w=800&auto=format&fit=crop' },
+  { id: 'c7', name: 'Pompki na poręczach', muscleGroup: 'Klatka piersiowa', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=800&auto=format&fit=crop' },
   
   // BACK
   { id: 'b1', name: 'Martwy ciąg', muscleGroup: 'Plecy', image: 'https://images.unsplash.com/photo-1603287681836-b174ce5074c2?q=80&w=800&auto=format&fit=crop' },
-  { id: 'b2', name: 'Podciąganie na drążku', muscleGroup: 'Plecy', image: 'https://images.unsplash.com/photo-1598971639058-fab354c622fb?q=80&w=800&auto=format&fit=crop' },
+  { id: 'b2', name: 'Podciąganie na drążku', muscleGroup: 'Plecy', image: 'https://upload.wikimedia.org/wikipedia/commons/6/67/Marine_Pull-ups.jpg' },
   { id: 'b3', name: 'Wiosłowanie sztangą', muscleGroup: 'Plecy', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=800&auto=format&fit=crop' },
   { id: 'b4', name: 'Wiosłowanie hantlem jednorącz', muscleGroup: 'Plecy', image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=800&auto=format&fit=crop' },
   { id: 'b5', name: 'Ściąganie drążka wyciągu górnego', muscleGroup: 'Plecy', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=800&auto=format&fit=crop' },
@@ -29,7 +29,7 @@ export const EXERCISES: Exercise[] = [
 
   // LEGS
   { id: 'l1', name: 'Przysiady', muscleGroup: 'Nogi', image: 'https://images.unsplash.com/photo-1434682881908-b43d0467b798?q=80&w=800&auto=format&fit=crop' },
-  { id: 'l2', name: 'Wykroki', muscleGroup: 'Nogi', image: 'https://images.unsplash.com/photo-1598971639058-fab354c622fb?q=80&w=800&auto=format&fit=crop' },
+  { id: 'l2', name: 'Wykroki', muscleGroup: 'Nogi', image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=800&auto=format&fit=crop' },
   { id: 'l3', name: 'Suwnica', muscleGroup: 'Nogi', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=800&auto=format&fit=crop' },
   { id: 'l4', name: 'Prostowanie nóg na maszynie', muscleGroup: 'Nogi', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=800&auto=format&fit=crop' },
   { id: 'l5', name: 'Uginanie nóg na maszynie', muscleGroup: 'Nogi', image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=800&auto=format&fit=crop' },
@@ -49,5 +49,5 @@ export const EXERCISES: Exercise[] = [
   // TRICEPS
   { id: 't1', name: 'Prostowanie ramion na wyciągu', muscleGroup: 'Triceps', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=800&auto=format&fit=crop' },
   { id: 't2', name: 'Francuskie wyciskanie', muscleGroup: 'Triceps', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=800&auto=format&fit=crop' },
-  { id: 't3', name: 'Dipy', muscleGroup: 'Triceps', image: 'https://images.unsplash.com/photo-1526506169004-9279ca84a282?q=80&w=800&auto=format&fit=crop' },
+  { id: 't3', name: 'Dipy', muscleGroup: 'Triceps', image: 'https://upload.wikimedia.org/wikipedia/commons/8/89/Dips.jpg' },
 ];
