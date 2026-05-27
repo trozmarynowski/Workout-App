@@ -8,7 +8,6 @@ import { WorkoutActive } from './components/WorkoutActive';
 import { HistoryList } from './components/HistoryList';
 import { ExerciseDatabase } from './components/ExerciseDatabase';
 import { Calculator1RM } from './components/Calculator1RM';
-import { Social } from './components/Social';
 import { TabBar } from './components/TabBar';
 
 export default function App() {
@@ -126,12 +125,6 @@ export default function App() {
         {screen === 'calculator' && (
           <div key="calculator">
             <Calculator1RM />
-          </div>
-        )}
-        
-        {screen === 'social' && (
-          <div key="social">
-            <Social />
           </div>
         )}
         

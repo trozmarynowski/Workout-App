@@ -2,10 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatTime, formatDate, generateId } from '../utils';
 import { Workout, WorkoutExercise, WorkoutTemplate } from '../types';
-import { Calendar, Clock, ChevronRight, Dumbbell, History, Trash2, Search, Trophy, TrendingUp, TrendingDown, FileText, Check, Edit2, Activity, BookmarkPlus, Share2 } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, Dumbbell, History, Trash2, Search, Trophy, TrendingUp, TrendingDown, FileText, Check, Edit2, Activity, BookmarkPlus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { auth, db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
 
 interface HistoryListProps {
   key?: React.Key;
@@ -420,41 +418,6 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
 
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-3xl font-bold text-white">Podsumowanie</h2>
-          {!isEditingSets && (
-            <button
-              onClick={async () => {
-              if (!auth.currentUser) {
-                alert("Zaloguj się w zakładce Społeczność, aby móc udostępniać treningi.");
-                return;
-              }
-              try {
-                let volume = 0;
-                selectedWorkout.exercises.forEach(we => {
-                  we.sets.filter(s => s.completed).forEach(s => {
-                    volume += Number(s.weight || 0) * Number(s.reps || 0);
-                  });
-                });
-                
-                await setDoc(doc(db, 'sharedWorkouts', selectedWorkout.id), {
-                  userId: auth.currentUser.uid,
-                  userDisplayName: auth.currentUser.displayName || 'Anonimowy sportowiec',
-                  workoutStartTime: selectedWorkout.startTime,
-                  duration: selectedWorkout.duration || 0,
-                  totalVolume: volume,
-                  notes: selectedWorkout.notes || '',
-                  createdAt: Date.now()
-                });
-                alert("Trening został udostępniony w Sieci!");
-              } catch (e) {
-                console.error(e);
-                alert("Nie udało się udostępnić. Sprawdź czy jesteś zalogowany.");
-              }
-            }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neon/10 text-neon hover:bg-neon/20 transition-colors text-sm font-bold border border-neon/20"
-          >
-            <Share2 size={16} /> Udostępnij
-          </button>
-          )}
         </div>
         <div className="flex items-center gap-4 text-neutral-400 text-sm mb-6 font-mono">
           <span className="flex items-center gap-1"><Calendar size={14} /> {formatDate(selectedWorkout.startTime)}</span>

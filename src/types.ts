@@ -1,4 +1,4 @@
-export type Screen = 'dashboard' | 'workout' | 'history' | 'exercises' | 'calculator' | 'social';
+export type Screen = 'dashboard' | 'workout' | 'history' | 'exercises' | 'calculator';
 
 export type MuscleGroup = 'Klatka piersiowa' | 'Plecy' | 'Nogi' | 'Barki' | 'Biceps' | 'Triceps' | 'Ramiona' | 'Brzuch';
 
