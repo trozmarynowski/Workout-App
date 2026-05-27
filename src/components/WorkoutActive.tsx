@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Workout, WorkoutExercise, SetData, Exercise } from '../types';
-import { formatTime, generateId } from '../utils';
+import { formatTime, generateId, calculateProgression } from '../utils';
 import { Play, Plus, Trash2, Check, X, Timer } from 'lucide-react';
 import { ExerciseDatabase } from './ExerciseDatabase';
 import { RestTimer } from './RestTimer';
@@ -9,33 +9,79 @@ import { RestTimer } from './RestTimer';
 interface WorkoutActiveProps {
   key?: React.Key;
   workout: Workout;
+  pastWorkouts?: Workout[];
   onUpdateWorkout: (workout: Workout) => void;
   onFinishWorkout: (workout: Workout) => void;
 }
 
-export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: WorkoutActiveProps) {
+export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onFinishWorkout }: WorkoutActiveProps) {
   const [elapsed, setElapsed] = useState(0);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [showRestTimer, setShowRestTimer] = useState(false);
 
+  const inactivityLimit = 10 * 60 * 1000;
+
+  const handleActivityAndUpdate = (newWorkout: Workout) => {
+    const now = Date.now();
+    let lastActiveTime = workout.lastActiveTime || workout.startTime;
+    let totalPauseDuration = workout.totalPauseDuration || 0;
+    
+    const inactiveTime = now - lastActiveTime;
+    if (inactiveTime > inactivityLimit) {
+      totalPauseDuration += (inactiveTime - inactivityLimit);
+    }
+    
+    onUpdateWorkout({
+      ...newWorkout,
+      lastActiveTime: now,
+      totalPauseDuration
+    });
+  };
+
+  const handleGeneralActivity = () => {
+    const now = Date.now();
+    let lastActiveTime = workout.lastActiveTime || workout.startTime;
+    
+    // Throttle general activity saves to max once per 10 seconds
+    if (now - lastActiveTime > 10000) {
+      handleActivityAndUpdate(workout);
+    }
+  };
+
   useEffect(() => {
     const updateElapsed = () => {
-      setElapsed(Math.floor((Date.now() - workout.startTime) / 1000));
+      const now = Date.now();
+      let lastActiveTime = workout.lastActiveTime || workout.startTime;
+      let totalPauseDuration = workout.totalPauseDuration || 0;
+      
+      let inactiveTime = now - lastActiveTime;
+      let currentPause = 0;
+      if (inactiveTime > inactivityLimit) {
+        currentPause = inactiveTime - inactivityLimit;
+      }
+      
+      setElapsed(Math.max(0, Math.floor((now - workout.startTime - totalPauseDuration - currentPause) / 1000)));
     };
     updateElapsed();
     const interval = setInterval(updateElapsed, 1000);
     return () => clearInterval(interval);
-  }, [workout.startTime]);
+  }, [workout]);
 
   const handleAddExercise = (exercise: Exercise) => {
+    const suggestion = calculateProgression(exercise.id, 0, pastWorkouts || [], workout.id);
     const newExercise: WorkoutExercise = {
       id: generateId(),
       exercise,
       sets: [
-        { id: generateId(), reps: '', weight: '', completed: false }
+        { 
+          id: generateId(), 
+          reps: suggestion ? suggestion.reps : '', 
+          weight: suggestion ? suggestion.weight : '', 
+          completed: false 
+        }
       ]
     };
-    onUpdateWorkout({
+    handleActivityAndUpdate({
       ...workout,
       exercises: [...workout.exercises, newExercise]
     });
@@ -43,33 +89,39 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
   };
 
   const handleRemoveExercise = (exerciseId: string) => {
-    onUpdateWorkout({
+    handleActivityAndUpdate({
       ...workout,
       exercises: workout.exercises.filter(e => e.id !== exerciseId)
     });
   };
 
   const handleAddSet = (exerciseId: string) => {
-    const defaultReps = '';
-    const defaultWeight = '';
-    
-    // Optionally copy from last set
     const we = workout.exercises.find(e => e.id === exerciseId);
-    let prevReps = defaultReps;
-    let prevWeight = defaultWeight;
-    if (we && we.sets.length > 0) {
-      const lastSet = we.sets[we.sets.length - 1];
-      prevReps = lastSet.reps;
-      prevWeight = lastSet.weight;
+    let newReps = '';
+    let newWeight = '';
+    
+    if (we) {
+      const setIndex = we.sets.length;
+      const suggestion = calculateProgression(we.exercise.id, setIndex, pastWorkouts || [], workout.id);
+      
+      if (suggestion) {
+        newReps = suggestion.reps;
+        newWeight = suggestion.weight;
+      } else if (we.sets.length > 0) {
+        // Copy from last set
+        const lastSet = we.sets[we.sets.length - 1];
+        newReps = lastSet.reps;
+        newWeight = lastSet.weight;
+      }
     }
 
-    onUpdateWorkout({
+    handleActivityAndUpdate({
       ...workout,
       exercises: workout.exercises.map(e => {
         if (e.id === exerciseId) {
           return {
             ...e,
-            sets: [...e.sets, { id: generateId(), reps: prevReps, weight: prevWeight, completed: false }]
+            sets: [...e.sets, { id: generateId(), reps: newReps, weight: newWeight, completed: false }]
           };
         }
         return e;
@@ -78,7 +130,7 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
   };
 
   const handleUpdateSet = (exerciseId: string, setId: string, field: 'reps' | 'weight', value: string) => {
-    onUpdateWorkout({
+    handleActivityAndUpdate({
       ...workout,
       exercises: workout.exercises.map(e => {
         if (e.id === exerciseId) {
@@ -99,7 +151,7 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
 
   const handleToggleSet = (exerciseId: string, setId: string) => {
     let nowCompleted = false;
-    onUpdateWorkout({
+    handleActivityAndUpdate({
       ...workout,
       exercises: workout.exercises.map(e => {
         if (e.id === exerciseId) {
@@ -118,12 +170,15 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
       })
     });
     if (nowCompleted) {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(50);
+      }
       setShowRestTimer(true);
     }
   };
 
   const handleRemoveSet = (exerciseId: string, setId: string) => {
-     onUpdateWorkout({
+     handleActivityAndUpdate({
       ...workout,
       exercises: workout.exercises.map(e => {
         if (e.id === exerciseId) {
@@ -138,16 +193,27 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
   };
 
   const finish = () => {
+    const now = Date.now();
+    let { lastActiveTime = workout.startTime, totalPauseDuration = 0 } = workout;
+    let inactiveTime = now - lastActiveTime;
+    let currentPause = 0;
+    if (inactiveTime > inactivityLimit) {
+      currentPause = inactiveTime - inactivityLimit;
+    }
+    const finalDuration = Math.max(0, Math.floor((now - workout.startTime - totalPauseDuration - currentPause) / 1000));
+
     const finalWorkout: Workout = {
       ...workout,
-      endTime: Date.now(),
-      duration: elapsed
+      endTime: now,
+      duration: finalDuration
     };
     onFinishWorkout(finalWorkout);
   };
 
   return (
     <motion.div 
+      onClick={handleGeneralActivity}
+      onKeyDown={handleGeneralActivity}
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
@@ -246,12 +312,23 @@ export function WorkoutActive({ workout, onUpdateWorkout, onFinishWorkout }: Wor
                         />
                       </div>
                       <div className="w-12 flex justify-center">
-                        <button 
+                        <motion.button 
+                          whileTap={{ scale: 0.9 }}
                           onClick={() => handleToggleSet(we.id, set.id)}
-                          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${set.completed ? 'bg-neon text-black' : 'bg-neutral-800 text-neutral-500 shadow-inner'}`}
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors overflow-hidden ${set.completed ? 'bg-neon text-black' : 'bg-neutral-800 text-neutral-500 shadow-inner'}`}
                         >
-                          <Check size={18} strokeWidth={set.completed ? 3 : 2} />
-                        </button>
+                          {set.completed ? (
+                            <motion.div
+                              initial={{ scale: 0, rotate: -45 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                            >
+                              <Check size={18} strokeWidth={3} />
+                            </motion.div>
+                          ) : (
+                            <Check size={18} strokeWidth={2} />
+                          )}
+                        </motion.button>
                       </div>
                     </motion.div>
                   ))}

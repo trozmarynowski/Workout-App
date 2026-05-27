@@ -1,5 +1,5 @@
 import { Screen } from '../types';
-import { Home, Play, History, Dumbbell } from 'lucide-react';
+import { Home, Play, History, Dumbbell, Calculator, Users } from 'lucide-react';
 
 interface TabBarProps {
   currentScreen: Screen;
@@ -17,7 +17,7 @@ export function TabBar({ currentScreen, onNavigate, isWorkoutActive }: TabBarPro
             currentScreen === 'dashboard' ? 'text-neon' : 'text-neutral-500 hover:text-neutral-300'
           }`}
         >
-          <Home size={24} />
+          <Home size={20} />
           <span className="text-[10px] font-medium uppercase tracking-wider">Start</span>
         </button>
         
@@ -27,8 +27,28 @@ export function TabBar({ currentScreen, onNavigate, isWorkoutActive }: TabBarPro
             currentScreen === 'exercises' ? 'text-neon' : 'text-neutral-500 hover:text-neutral-300'
           }`}
         >
-          <Dumbbell size={24} />
+          <Dumbbell size={20} />
           <span className="text-[10px] font-medium uppercase tracking-wider">Baza</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate('calculator')}
+          className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
+            currentScreen === 'calculator' ? 'text-neon' : 'text-neutral-500 hover:text-neutral-300'
+          }`}
+        >
+          <Calculator size={20} />
+          <span className="text-[10px] font-medium uppercase tracking-wider">1RM</span>
+        </button>
+
+        <button
+          onClick={() => onNavigate('social')}
+          className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
+            currentScreen === 'social' ? 'text-neon' : 'text-neutral-500 hover:text-neutral-300'
+          }`}
+        >
+          <Users size={20} />
+          <span className="text-[10px] font-medium uppercase tracking-wider">Sieć</span>
         </button>
 
         {isWorkoutActive && (
@@ -38,8 +58,8 @@ export function TabBar({ currentScreen, onNavigate, isWorkoutActive }: TabBarPro
               currentScreen === 'workout' ? 'text-neon' : 'text-neutral-500 hover:text-neutral-300'
             }`}
           >
-            <div className={`p-2 rounded-full ${currentScreen === 'workout' ? 'bg-neon/20' : 'bg-neutral-800'}`}>
-              <Play size={20} className={currentScreen === 'workout' ? 'text-neon' : ''} fill="currentColor" />
+            <div className={`p-1.5 rounded-full ${currentScreen === 'workout' ? 'bg-neon/20' : 'bg-neutral-800'}`}>
+              <Play size={16} className={currentScreen === 'workout' ? 'text-neon' : ''} fill="currentColor" />
             </div>
             <span className="text-[10px] font-medium uppercase tracking-wider">Trening</span>
           </button>
@@ -51,7 +71,7 @@ export function TabBar({ currentScreen, onNavigate, isWorkoutActive }: TabBarPro
             currentScreen === 'history' ? 'text-neon' : 'text-neutral-500 hover:text-neutral-300'
           }`}
         >
-          <History size={24} />
+          <History size={20} />
           <span className="text-[10px] font-medium uppercase tracking-wider">Historia</span>
         </button>
       </div>

@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with basic info",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["displayName", "createdAt"]
+    },
+    "FollowConnection": {
+      "title": "FollowConnection",
+      "description": "A record of one user following another",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["userId", "timestamp"]
+    },
+    "SharedWorkout": {
+      "title": "SharedWorkout",
+      "description": "A workout activity shared by a user to the community feed.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userDisplayName": { "type": "string" },
+        "workoutStartTime": { "type": "number" },
+        "duration": { "type": "number" },
+        "totalVolume": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["userId", "workoutStartTime", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles."
+    },
+    "users/{userId}/followers/{followerId}": {
+      "schema": { "$ref": "#/entities/FollowConnection" },
+      "description": "Records users who follow {userId}. Here {followerId} is the ID of the follower."
+    },
+    "users/{userId}/following/{followingId}": {
+      "schema": { "$ref": "#/entities/FollowConnection" },
+      "description": "Records users that {userId} is following. Here {followingId} is the ID of the followed user."
+    },
+    "sharedWorkouts/{workoutId}": {
+      "schema": { "$ref": "#/entities/SharedWorkout" },
+      "description": "Shared workouts by users for the community feed."
+    }
+  }
+}

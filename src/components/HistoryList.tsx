@@ -2,8 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatTime, formatDate, generateId } from '../utils';
 import { Workout, WorkoutExercise, WorkoutTemplate } from '../types';
-import { Calendar, Clock, ChevronRight, Dumbbell, History, Trash2, Search, Trophy, TrendingUp, TrendingDown, FileText, Check, Edit2, Activity, BookmarkPlus } from 'lucide-react';
+import { Calendar, Clock, ChevronRight, Dumbbell, History, Trash2, Search, Trophy, TrendingUp, TrendingDown, FileText, Check, Edit2, Activity, BookmarkPlus, Share2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { auth, db } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface HistoryListProps {
   key?: React.Key;
@@ -99,6 +101,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
   const [filterEndDate, setFilterEndDate] = useState('');
   
   const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [isEditingSets, setIsEditingSets] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [showSaveTemplatePrompt, setShowSaveTemplatePrompt] = useState(false);
   const [templateNameDraft, setTemplateNameDraft] = useState('');
@@ -190,6 +193,85 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
     return true;
   });
 
+  const handleUpdateSet = (exerciseId: string, setId: string, field: 'weight' | 'reps', value: string) => {
+    if (!selectedWorkout) return;
+    const updated = {
+      ...selectedWorkout,
+      exercises: selectedWorkout.exercises.map(e => {
+        if (e.id === exerciseId) {
+          return {
+            ...e,
+            sets: e.sets.map(s => {
+              if (s.id === setId) {
+                return { ...s, [field]: value };
+              }
+              return s;
+            })
+          };
+        }
+        return e;
+      })
+    };
+    setSelectedWorkout(updated);
+  };
+
+  const handleRemoveSet = (exerciseId: string, setId: string) => {
+     if (!selectedWorkout) return;
+     const updated = {
+       ...selectedWorkout,
+       exercises: selectedWorkout.exercises.map(e => {
+         if (e.id === exerciseId) {
+           return {
+             ...e,
+             sets: e.sets.filter(s => s.id !== setId)
+           };
+         }
+         return e;
+       })
+     };
+     setSelectedWorkout(updated);
+  };
+
+  const handleToggleSetCompleted = (exerciseId: string, setId: string) => {
+    if (!selectedWorkout) return;
+    const updated = {
+      ...selectedWorkout,
+      exercises: selectedWorkout.exercises.map(e => {
+        if (e.id === exerciseId) {
+          return {
+            ...e,
+            sets: e.sets.map(s => {
+              if (s.id === setId) {
+                return { ...s, completed: !s.completed };
+              }
+              return s;
+            })
+          };
+        }
+        return e;
+      })
+    };
+    setSelectedWorkout(updated);
+  };
+
+  const handleAddSet = (exerciseId: string) => {
+    if (!selectedWorkout) return;
+    const updated = {
+      ...selectedWorkout,
+      exercises: selectedWorkout.exercises.map(e => {
+        if (e.id === exerciseId) {
+          const lastSet = e.sets[e.sets.length - 1];
+          return {
+            ...e,
+            sets: [...e.sets, { id: generateId(), reps: lastSet?.reps || '', weight: lastSet?.weight || '', completed: false }]
+          };
+        }
+        return e;
+      })
+    };
+    setSelectedWorkout(updated);
+  };
+
   if (selectedWorkout) {
     return (
       <motion.div 
@@ -245,7 +327,26 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
           </button>
           
           <div className="flex gap-2">
-            {onSaveTemplate && (
+            {!isEditingSets ? (
+              <button
+                onClick={() => setIsEditingSets(true)}
+                className="text-neutral-400 hover:text-white p-2 text-xs flex items-center gap-1 rounded-full bg-neutral-900 border border-neutral-800 transition-colors"
+                title="Edytuj Trening"
+              >
+                <Edit2 size={16} />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  onUpdateWorkout(selectedWorkout);
+                  setIsEditingSets(false);
+                }}
+                className="bg-neon text-black hover:brightness-110 px-3 py-1 text-xs font-bold flex items-center gap-1 rounded-lg transition-colors"
+              >
+                <Check size={16} /> Zapisz
+              </button>
+            )}
+            {onSaveTemplate && !isEditingSets && (
               <button
                 onClick={() => {
                   setTemplateNameDraft(`Trening: ${formatDate(selectedWorkout.startTime)}`);
@@ -257,12 +358,14 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
                 <BookmarkPlus size={16} />
               </button>
             )}
-            <button
-              onClick={() => setShowConfirmDelete(selectedWorkout.id)}
-              className="text-red-500 hover:text-red-400 p-2 rounded-full bg-neutral-900 border border-neutral-800 transition-colors"
-            >
-              <Trash2 size={16} />
-            </button>
+            {!isEditingSets && (
+              <button
+                onClick={() => setShowConfirmDelete(selectedWorkout.id)}
+                className="text-red-500 hover:text-red-400 p-2 rounded-full bg-neutral-900 border border-neutral-800 transition-colors"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -315,7 +418,44 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
           )}
         </AnimatePresence>
 
-        <h2 className="text-3xl font-bold mb-2 text-white">Podsumowanie</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-3xl font-bold text-white">Podsumowanie</h2>
+          {!isEditingSets && (
+            <button
+              onClick={async () => {
+              if (!auth.currentUser) {
+                alert("Zaloguj się w zakładce Sieć, aby móc udostępniać treningi.");
+                return;
+              }
+              try {
+                let volume = 0;
+                selectedWorkout.exercises.forEach(we => {
+                  we.sets.filter(s => s.completed).forEach(s => {
+                    volume += Number(s.weight || 0) * Number(s.reps || 0);
+                  });
+                });
+                
+                await setDoc(doc(db, 'sharedWorkouts', selectedWorkout.id), {
+                  userId: auth.currentUser.uid,
+                  userDisplayName: auth.currentUser.displayName || 'Anonimowy sportowiec',
+                  workoutStartTime: selectedWorkout.startTime,
+                  duration: selectedWorkout.duration || 0,
+                  totalVolume: volume,
+                  notes: selectedWorkout.notes || '',
+                  createdAt: Date.now()
+                });
+                alert("Trening został udostępniony w Sieci!");
+              } catch (e) {
+                console.error(e);
+                alert("Nie udało się udostępnić. Sprawdź czy jesteś zalogowany.");
+              }
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neon/10 text-neon hover:bg-neon/20 transition-colors text-sm font-bold border border-neon/20"
+          >
+            <Share2 size={16} /> Udostępnij
+          </button>
+          )}
+        </div>
         <div className="flex items-center gap-4 text-neutral-400 text-sm mb-6 font-mono">
           <span className="flex items-center gap-1"><Calendar size={14} /> {formatDate(selectedWorkout.startTime)}</span>
           {selectedWorkout.duration && (
@@ -430,38 +570,80 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
                     <div className="col-span-3 text-center">Powt.</div>
                     <div className="col-span-4 text-right">Progres</div>
                   </div>
-                  {completedSets.map((set, idx) => {
-                    let diffElement = null;
-                    if (stats?.previousWe) {
-                      const prevSets = stats.previousWe.sets.filter(s => s.completed);
-                      const prevSet = prevSets[idx];
-                      if (prevSet) {
-                        const weightDiff = (Number(set.weight) || 0) - (Number(prevSet.weight) || 0);
-                        const repsDiff = (Number(set.reps) || 0) - (Number(prevSet.reps) || 0);
-
-                        if (weightDiff !== 0) {
-                          const isPos = weightDiff > 0;
-                          diffElement = <span className={`text-[10px] ${isPos ? 'text-green-500' : 'text-red-500'} flex items-center justify-end gap-1 font-bold`}>{isPos ? '+' : ''}{weightDiff} kg {isPos && '🔥'}</span>;
-                        } else if (repsDiff !== 0) {
-                          const isPos = repsDiff > 0;
-                          diffElement = <span className={`text-[10px] ${isPos ? 'text-green-500' : 'text-red-500'} flex items-center justify-end gap-1 font-bold`}>{isPos ? '+' : ''}{repsDiff} powt {isPos && '💪'}</span>;
-                        } else {
-                          diffElement = <span className="text-[10px] text-neutral-600 font-bold">-</span>;
+                  {isEditingSets ? (
+                    <>
+                      {we.sets.map((set, idx) => (
+                        <div key={set.id} className={`flex items-center gap-2 text-sm font-mono rounded-lg p-2 ${set.completed ? 'bg-neon/5 border-neon/20' : 'bg-neutral-950/50 border-neutral-800'} border`}>
+                          <div className="w-6 text-center text-neutral-500 font-bold">{idx + 1}</div>
+                          <input 
+                            type="number" 
+                            value={set.weight} 
+                            onChange={e => handleUpdateSet(we.id, set.id, 'weight', e.target.value)}
+                            className="w-16 bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-center text-white focus:border-neon focus:outline-none focus:ring-1 focus:ring-neon transition-colors"
+                            placeholder="kg"
+                          />
+                          <input 
+                            type="number" 
+                            value={set.reps} 
+                            onChange={e => handleUpdateSet(we.id, set.id, 'reps', e.target.value)}
+                            className="w-16 bg-neutral-900 border border-neutral-800 rounded px-2 py-1.5 text-center text-white focus:border-neon focus:outline-none focus:ring-1 focus:ring-neon transition-colors"
+                            placeholder="powt."
+                          />
+                          <button 
+                            onClick={() => handleToggleSetCompleted(we.id, set.id)}
+                            className={`flex-1 flex justify-center py-2 rounded-lg transition-colors ${set.completed ? 'bg-neon text-black' : 'bg-neutral-800 text-neutral-400 hover:text-white'}`}
+                          >
+                            <Check size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleRemoveSet(we.id, set.id)}
+                            className="p-2 rounded-lg text-red-500 border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => handleAddSet(we.id)}
+                        className="w-full mt-2 py-2 text-xs font-bold uppercase tracking-wider text-neon border border-neon/30 rounded-lg hover:bg-neon/10 transition-colors"
+                      >
+                        + Dodaj Serię
+                      </button>
+                    </>
+                  ) : (
+                    completedSets.map((set, idx) => {
+                      let diffElement = null;
+                      if (stats?.previousWe) {
+                        const prevSets = stats.previousWe.sets.filter(s => s.completed);
+                        const prevSet = prevSets[idx];
+                        if (prevSet) {
+                          const weightDiff = (Number(set.weight) || 0) - (Number(prevSet.weight) || 0);
+                          const repsDiff = (Number(set.reps) || 0) - (Number(prevSet.reps) || 0);
+  
+                          if (weightDiff !== 0) {
+                            const isPos = weightDiff > 0;
+                            diffElement = <span className={`text-[10px] ${isPos ? 'text-green-500' : 'text-red-500'} flex items-center justify-end gap-1 font-bold`}>{isPos ? '+' : ''}{weightDiff} kg {isPos && '🔥'}</span>;
+                          } else if (repsDiff !== 0) {
+                            const isPos = repsDiff > 0;
+                            diffElement = <span className={`text-[10px] ${isPos ? 'text-green-500' : 'text-red-500'} flex items-center justify-end gap-1 font-bold`}>{isPos ? '+' : ''}{repsDiff} powt {isPos && '💪'}</span>;
+                          } else {
+                            diffElement = <span className="text-[10px] text-neutral-600 font-bold">-</span>;
+                          }
                         }
                       }
-                    }
-
-                    return (
-                      <div key={set.id} className="grid grid-cols-12 gap-2 items-center text-sm font-mono bg-neutral-950/50 rounded-lg p-2 border border-neutral-800">
-                        <div className="col-span-2 text-center text-neutral-400">{idx + 1}</div>
-                        <div className="col-span-3 text-center text-white">{set.weight || '-'}</div>
-                        <div className="col-span-3 text-center text-white">{set.reps || '-'}</div>
-                        <div className="col-span-4 text-right pr-2 flex items-center justify-end h-full">
-                          {diffElement}
+  
+                      return (
+                        <div key={set.id} className="grid grid-cols-12 gap-2 items-center text-sm font-mono bg-neutral-950/50 rounded-lg p-2 border border-neutral-800">
+                          <div className="col-span-2 text-center text-neutral-400">{idx + 1}</div>
+                          <div className="col-span-3 text-center text-white">{set.weight || '-'}</div>
+                          <div className="col-span-3 text-center text-white">{set.reps || '-'}</div>
+                          <div className="col-span-4 text-right pr-2 flex items-center justify-end h-full">
+                            {diffElement}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             );

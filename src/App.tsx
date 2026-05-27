@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { Screen, Workout, WorkoutTemplate } from './types';
-import { generateId } from './utils';
+import { generateId, calculateProgression } from './utils';
 
 import { Dashboard } from './components/Dashboard';
 import { WorkoutActive } from './components/WorkoutActive';
 import { HistoryList } from './components/HistoryList';
 import { ExerciseDatabase } from './components/ExerciseDatabase';
+import { Calculator1RM } from './components/Calculator1RM';
+import { Social } from './components/Social';
 import { TabBar } from './components/TabBar';
 
 export default function App() {
@@ -77,8 +79,16 @@ export default function App() {
       startTime: Date.now(),
       exercises: template ? template.exercises.map(e => ({
         ...e,
-        // Reset completion status for the new workout, keep weight/reps from template
-        sets: e.sets.map(s => ({ ...s, completed: false, id: generateId() }))
+        sets: e.sets.map((s, idx) => {
+          const suggestion = calculateProgression(e.exercise.id, idx, workouts);
+          return { 
+            ...s, 
+            completed: false, 
+            id: generateId(),
+            weight: suggestion && s.weight === '' ? suggestion.weight : s.weight,
+            reps: suggestion && s.reps === '' ? suggestion.reps : s.reps
+          };
+        })
       })) : []
     };
     setActiveWorkout(newWorkout);
@@ -113,10 +123,23 @@ export default function App() {
           </div>
         )}
         
+        {screen === 'calculator' && (
+          <div key="calculator">
+            <Calculator1RM />
+          </div>
+        )}
+        
+        {screen === 'social' && (
+          <div key="social">
+            <Social />
+          </div>
+        )}
+        
         {screen === 'workout' && activeWorkout && (
           <WorkoutActive 
             key="workout"
             workout={activeWorkout}
+            pastWorkouts={workouts}
             onUpdateWorkout={setActiveWorkout}
             onFinishWorkout={finishWorkout}
           />

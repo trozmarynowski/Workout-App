@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['displayName', 'createdAt']) && 
+             data.displayName is string && data.displayName.size() <= 64 &&
+             data.createdAt is number &&
+             (data.keys().hasAll(['email']) ? (data.email is string && data.email.size() <= 128) : true) &&
+             (data.keys().hasAll(['photoURL']) ? (data.photoURL is string && data.photoURL.size() <= 512) : true);
+    }
+    
+    function isValidFollowConnection(data, expectedUserId) {
+      // The user being followed or the follower.
+      return data.keys().hasAll(['userId', 'timestamp']) &&
+             data.keys().size() == 2 &&
+             data.userId is string && data.userId.size() <= 128 && data.userId == expectedUserId &&
+             data.timestamp is number;
+    }
+    
+    function isValidSharedWorkout(data, authUid) {
+        return data.keys().hasAll(['userId', 'workoutStartTime', 'createdAt']) &&
+               data.userId is string && data.userId.size() <= 128 && data.userId == authUid &&
+               data.workoutStartTime is number &&
+               data.createdAt is number &&
+               (data.keys().hasAll(['userDisplayName']) ? (data.userDisplayName is string && data.userDisplayName.size() <= 64) : true) &&
+               (data.keys().hasAll(['duration']) ? data.duration is number : true) &&
+               (data.keys().hasAll(['totalVolume']) ? data.totalVolume is number : true) &&
+               (data.keys().hasAll(['notes']) ? (data.notes is string && data.notes.size() <= 1024) : true);
+    }
+
+    match /users/{userId} {
+      // Allow user themselves to create or update their profile
+      allow get: if isSignedIn();
+      allow list: if isSignedIn(); 
+      allow create: if isSignedIn() && 
+                       isValidId(userId) && 
+                       userId == request.auth.uid && 
+                       isValidUser(incoming()) && 
+                       incoming().createdAt == request.time.toMillis();
+      allow update: if isSignedIn() && 
+                       userId == request.auth.uid && 
+                       isValidUser(incoming()) && 
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoURL']);
+    }
+
+    match /users/{userId}/followers/{followerId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
+      // I can add myself as a follower of userId. 
+      // This means my auth.uid == followerId. 
+      // The payload must contain my userId (followerId).
+      allow create: if isSignedIn() && 
+                       isValidId(userId) && 
+                       isValidId(followerId) && 
+                       followerId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/users/$(userId)) &&
+                       isValidFollowConnection(incoming(), request.auth.uid) &&
+                       incoming().timestamp == request.time.toMillis();
+      
+      allow delete: if isSignedIn() && followerId == request.auth.uid;
+    }
+
+    match /users/{userId}/following/{followingId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && userId == request.auth.uid; // Only I can see who I follow? Or anyone? Let's say anyone.
+      
+      // I can add someone to my following list.
+      // This means my auth.uid == userId.
+      // The payload must contain the person I am following (followingId).
+      allow create: if isSignedIn() && 
+                       isValidId(userId) && 
+                       isValidId(followingId) && 
+                       userId == request.auth.uid &&
+                       exists(/databases/$(database)/documents/users/$(followingId)) &&
+                       isValidFollowConnection(incoming(), followingId) &&
+                       incoming().timestamp == request.time.toMillis();
+                       
+      allow delete: if isSignedIn() && userId == request.auth.uid;
+    }
+
+    match /sharedWorkouts/{workoutId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn(); // We don't restrict query, everyone can see shared workouts feed
+      allow create: if isSignedIn() && 
+                       isValidId(workoutId) && 
+                       isValidSharedWorkout(incoming(), request.auth.uid) &&
+                       incoming().createdAt == request.time.toMillis();
+      allow update: if isSignedIn() &&
+                       existing().userId == request.auth.uid &&
+                       isValidSharedWorkout(incoming(), request.auth.uid) &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['notes', 'userDisplayName', 'totalVolume', 'duration']);
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}

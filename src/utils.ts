@@ -1,3 +1,5 @@
+import { Workout } from './types';
+
 export function generateId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
@@ -23,4 +25,48 @@ export function formatDate(timestamp: number): string {
     month: 'long',
     year: 'numeric',
   }).format(date);
+}
+
+export function calculateProgression(exerciseId: string, setIndex: number, pastWorkouts: Workout[], currentWorkoutId?: string) {
+  if (!pastWorkouts || pastWorkouts.length === 0) return null;
+  
+  const sorted = [...pastWorkouts].sort((a, b) => b.startTime - a.startTime);
+  for (const w of sorted) {
+    if (currentWorkoutId && w.id === currentWorkoutId) continue;
+    const ex = w.exercises.find(e => e.exercise.id === exerciseId);
+    if (ex && ex.sets.length > 0) {
+      let referenceSet = ex.sets[setIndex];
+      
+      if (!referenceSet) {
+         referenceSet = ex.sets[ex.sets.length - 1]; // fallback to last set
+      }
+
+      if (referenceSet && referenceSet.weight) {
+         const pastWeight = parseFloat(referenceSet.weight);
+         const pastReps = parseInt(referenceSet.reps || "0");
+         
+         if (!isNaN(pastWeight) && !isNaN(pastReps)) {
+            let sugWeight = pastWeight;
+            let sugReps = pastReps;
+            
+            // Intelligent progression
+            if (pastReps >= 8 && referenceSet.completed) {
+               sugWeight += 2.5; // Progressive overload
+               sugReps = Math.max(6, pastReps - 2); // Drop reps slightly for heavier weight, minimum 6
+            } else if (pastReps < 5 && referenceSet.completed) {
+               sugReps += 1; // Same weight, push for more reps
+            }
+            
+            return { 
+              weight: sugWeight.toString(), 
+              reps: sugReps > 0 ? sugReps.toString() : '', 
+              isIncrease: sugWeight > pastWeight,
+              pastWeight,
+              pastReps
+            };
+         }
+      }
+    }
+  }
+  return null;
 }

@@ -1,4 +1,4 @@
-export type Screen = 'dashboard' | 'workout' | 'history' | 'exercises';
+export type Screen = 'dashboard' | 'workout' | 'history' | 'exercises' | 'calculator' | 'social';
 
 export type MuscleGroup = 'Klatka piersiowa' | 'Plecy' | 'Nogi' | 'Barki' | 'Biceps' | 'Triceps' | 'Ramiona' | 'Brzuch';
 
@@ -40,4 +40,6 @@ export interface Workout {
   duration?: number;
   notes?: string;
   exercises: WorkoutExercise[];
+  lastActiveTime?: number;
+  totalPauseDuration?: number;
 }
