@@ -86,9 +86,11 @@ export function Social() {
   const handleLogin = async () => {
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
     } catch (e) {
-      console.error(e);
+      console.error('Login error:', e);
+      alert(`Błąd logowania: ${e instanceof Error ? e.message : String(e)}. Spróbuj otworzyć aplikację w nowej karcie.`);
     }
   };
 

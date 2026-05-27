@@ -424,7 +424,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
             <button
               onClick={async () => {
               if (!auth.currentUser) {
-                alert("Zaloguj się w zakładce Sieć, aby móc udostępniać treningi.");
+                alert("Zaloguj się w zakładce Społeczność, aby móc udostępniać treningi.");
                 return;
               }
               try {
