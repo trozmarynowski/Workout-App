@@ -1,6 +1,12 @@
-export type Screen = 'dashboard' | 'workout' | 'history' | 'exercises' | 'calculator';
+export type Screen = 'dashboard' | 'workout' | 'history' | 'exercises' | 'calculator' | 'profile';
 
 export type MuscleGroup = 'Klatka piersiowa' | 'Plecy' | 'Nogi' | 'Barki' | 'Biceps' | 'Triceps' | 'Ramiona' | 'Brzuch';
+
+export interface UserProfile {
+  name: string;
+  bio: string;
+  avatarUrl: string | null;
+}
 
 export interface Exercise {
   id: string;

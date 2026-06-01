@@ -38,16 +38,6 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
     });
   };
 
-  const handleGeneralActivity = () => {
-    const now = Date.now();
-    let lastActiveTime = workout.lastActiveTime || workout.startTime;
-    
-    // Throttle general activity saves to max once per 10 seconds
-    if (now - lastActiveTime > 10000) {
-      handleActivityAndUpdate(workout);
-    }
-  };
-
   useEffect(() => {
     const updateElapsed = () => {
       const now = Date.now();
@@ -192,7 +182,8 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
     });
   };
 
-  const finish = () => {
+  const finish = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     const now = Date.now();
     let { lastActiveTime = workout.startTime, totalPauseDuration = 0 } = workout;
     let inactiveTime = now - lastActiveTime;
@@ -212,8 +203,6 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
 
   return (
     <motion.div 
-      onClick={handleGeneralActivity}
-      onKeyDown={handleGeneralActivity}
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}

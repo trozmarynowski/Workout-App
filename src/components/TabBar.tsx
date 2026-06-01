@@ -1,5 +1,5 @@
 import { Screen } from '../types';
-import { Home, Play, History, Dumbbell, Calculator } from 'lucide-react';
+import { Home, Play, History, Dumbbell, Calculator, User } from 'lucide-react';
 
 interface TabBarProps {
   currentScreen: Screen;
@@ -63,6 +63,16 @@ export function TabBar({ currentScreen, onNavigate, isWorkoutActive }: TabBarPro
         >
           <History size={20} />
           <span className="text-[10px] font-medium uppercase tracking-wider">Historia</span>
+        </button>
+        
+        <button
+          onClick={() => onNavigate('profile')}
+          className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${
+            currentScreen === 'profile' ? 'text-neon' : 'text-neutral-500 hover:text-neutral-300'
+          }`}
+        >
+          <User size={20} />
+          <span className="text-[10px] font-medium uppercase tracking-wider">Profil</span>
         </button>
       </div>
     </div>
