@@ -284,9 +284,8 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
                           type="number"
                           value={set.weight}
                           onChange={(e) => handleUpdateSet(we.id, set.id, 'weight', e.target.value)}
-                          disabled={set.completed}
                           placeholder="-"
-                          className="w-full bg-neutral-900 disabled:bg-transparent disabled:text-neutral-300 text-center py-2.5 rounded-lg text-white font-mono focus:outline-none focus:ring-1 focus:ring-neon transition-all"
+                          className={`w-full text-center py-2.5 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-neon transition-all ${set.completed ? 'bg-transparent text-white focus:bg-neutral-900' : 'bg-neutral-900 text-white'}`}
                         />
                       </div>
                       <div className="flex-1 relative">
@@ -294,9 +293,8 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
                           type="number"
                           value={set.reps}
                           onChange={(e) => handleUpdateSet(we.id, set.id, 'reps', e.target.value)}
-                          disabled={set.completed}
                           placeholder="-"
-                          className="w-full bg-neutral-900 disabled:bg-transparent disabled:text-neutral-300 text-center py-2.5 rounded-lg text-white font-mono focus:outline-none focus:ring-1 focus:ring-neon transition-all"
+                          className={`w-full text-center py-2.5 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-neon transition-all ${set.completed ? 'bg-transparent text-white focus:bg-neutral-900' : 'bg-neutral-900 text-white'}`}
                         />
                       </div>
                       <div className="w-10 flex justify-center">
