@@ -14,13 +14,20 @@ interface HistoryListProps {
   onSaveTemplate?: (template: WorkoutTemplate) => void;
 }
 
-function getExerciseStats(allWorkouts: Workout[], workoutId: string, exerciseId: string) {
-  const sorted = [...allWorkouts].sort((a, b) => a.startTime - b.startTime);
-  const currentIdx = sorted.findIndex(w => w.id === workoutId);
+function getExerciseStats(allWorkouts: Workout[], selectedWorkout: Workout, exerciseId: string, workoutExerciseId?: string) {
+  const updatedWorkouts = allWorkouts.map(w => w.id === selectedWorkout.id ? selectedWorkout : w);
+  if (!updatedWorkouts.find(w => w.id === selectedWorkout.id)) {
+    updatedWorkouts.push(selectedWorkout);
+  }
+  const sorted = [...updatedWorkouts].sort((a, b) => a.startTime - b.startTime);
+  const currentIdx = sorted.findIndex(w => w.id === selectedWorkout.id);
   const currentWorkout = sorted[currentIdx];
   if (!currentWorkout) return null;
 
-  const currentWe = currentWorkout.exercises.find(we => we.exercise.id === exerciseId);
+  // Use workoutExerciseId to find the exact instance if provided, otherwise fallback to exerciseId
+  const currentWe = workoutExerciseId 
+    ? currentWorkout.exercises.find(we => we.id === workoutExerciseId)
+    : currentWorkout.exercises.find(we => we.exercise.id === exerciseId);
   if (!currentWe) return null;
 
   let currentVolume = 0;
@@ -41,32 +48,34 @@ function getExerciseStats(allWorkouts: Workout[], workoutId: string, exerciseId:
   // Calculate stats
   for (let i = 0; i <= currentIdx; i++) {
     const w = sorted[i];
-    const we = w.exercises.find(e => e.exercise.id === exerciseId);
-    if (!we) continue;
+    const weList = w.exercises.filter(e => e.exercise.id === exerciseId);
+    if (weList.length === 0) continue;
 
     const isCurrent = i === currentIdx;
     
     if (!isCurrent) {
-      previousWe = we;
+      previousWe = weList[weList.length - 1]; // Use the last one found as previous
     }
 
-    let vol = 0;
-    we.sets.filter(s => s.completed).forEach(s => {
-      const weight = Number(s.weight) || 0;
-      const reps = Number(s.reps) || 0;
-      
-      if (weight > maxWeight) maxWeight = weight;
-      if (reps > maxReps) maxReps = reps;
-      vol += weight * reps;
-      
-      if (!isCurrent) {
-        if (weight > prevMaxWeight) prevMaxWeight = weight;
-        if (reps > prevMaxReps) prevMaxReps = reps;
-      }
-    });
+    weList.forEach(we => {
+      let vol = 0;
+      we.sets.filter(s => s.completed).forEach(s => {
+        const weight = Number(s.weight) || 0;
+        const reps = Number(s.reps) || 0;
+        
+        if (weight > maxWeight) maxWeight = weight;
+        if (reps > maxReps) maxReps = reps;
+        vol += weight * reps;
+        
+        if (!isCurrent) {
+          if (weight > prevMaxWeight) prevMaxWeight = weight;
+          if (reps > prevMaxReps) prevMaxReps = reps;
+        }
+      });
 
-    if (vol > maxVolume) maxVolume = vol;
-    if (!isCurrent && vol > prevMaxVolume) prevMaxVolume = vol;
+      if (vol > maxVolume) maxVolume = vol;
+      if (!isCurrent && vol > prevMaxVolume) prevMaxVolume = vol;
+    });
   }
 
   if (previousWe) {
@@ -513,7 +522,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
             const completedSets = we.sets.filter(s => s.completed);
             if (completedSets.length === 0) return null;
 
-            const stats = getExerciseStats(workouts, selectedWorkout.id, we.exercise.id);
+            const stats = getExerciseStats(workouts, selectedWorkout, we.exercise.id, we.id);
 
             return (
               <div key={we.id} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-lg">
