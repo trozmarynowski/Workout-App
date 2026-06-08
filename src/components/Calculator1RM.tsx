@@ -13,7 +13,6 @@ export function Calculator1RM() {
     const r = parseInt(reps, 10);
     
     if (!w || !r || r < 1) return null;
-    if (r === 1) return w;
 
     return {
       epley: w * (1 + r / 30),

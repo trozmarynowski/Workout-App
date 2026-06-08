@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { formatTime, formatDate, generateId } from '../utils';
-import { Workout, WorkoutExercise, WorkoutTemplate } from '../types';
-import { Calendar, Clock, ChevronRight, Dumbbell, History, Trash2, Search, Trophy, TrendingUp, TrendingDown, FileText, Check, Edit2, Activity, BookmarkPlus } from 'lucide-react';
+import { formatTime, formatDate, generateId, calculateProgression } from '../utils';
+import { Workout, WorkoutExercise, WorkoutTemplate, Exercise } from '../types';
+import { Calendar, Clock, ChevronRight, Dumbbell, History, Trash2, Search, Trophy, TrendingUp, TrendingDown, FileText, Check, Edit2, Activity, BookmarkPlus, Plus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { ExerciseDatabase } from './ExerciseDatabase';
 
 interface HistoryListProps {
   key?: React.Key;
@@ -100,6 +101,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
   
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [isEditingSets, setIsEditingSets] = useState(false);
+  const [showAddExercise, setShowAddExercise] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [showSaveTemplatePrompt, setShowSaveTemplatePrompt] = useState(false);
   const [templateNameDraft, setTemplateNameDraft] = useState('');
@@ -270,8 +272,31 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
     setSelectedWorkout(updated);
   };
 
+  const handleAddExercise = (exercise: Exercise) => {
+    if (!selectedWorkout) return;
+    const suggestion = calculateProgression(exercise.id, 0, workouts || [], selectedWorkout.id);
+    const newExercise: WorkoutExercise = {
+      id: generateId(),
+      exercise,
+      sets: [
+        { 
+          id: generateId(), 
+          reps: suggestion ? suggestion.reps : '', 
+          weight: suggestion ? suggestion.weight : '', 
+          completed: true // auto complete assuming history items might be already done or let user tick it
+        }
+      ]
+    };
+    setSelectedWorkout({
+      ...selectedWorkout,
+      exercises: [...selectedWorkout.exercises, newExercise]
+    });
+    setShowAddExercise(false);
+  };
+
   if (selectedWorkout) {
     return (
+      <>
       <motion.div 
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -611,8 +636,24 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
               </div>
             );
           })}
+          {isEditingSets && (
+            <button
+              onClick={() => setShowAddExercise(true)}
+              className="mt-6 w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-sm font-bold uppercase tracking-wider text-black bg-white shadow-xl hover:bg-neutral-200 transition-colors"
+            >
+              <Plus size={20} /> Dodaj Ćwiczenie
+            </button>
+          )}
         </div>
       </motion.div>
+      {showAddExercise && (
+        <ExerciseDatabase 
+          selectionMode 
+          onSelectExercise={handleAddExercise} 
+          onCancel={() => setShowAddExercise(false)} 
+        />
+      )}
+    </>
     );
   }
 
