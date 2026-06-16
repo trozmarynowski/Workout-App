@@ -195,6 +195,13 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
 
     const finalWorkout: Workout = {
       ...workout,
+      exercises: workout.exercises.map(e => ({
+        ...e,
+        sets: e.sets.map(s => ({
+          ...s,
+          completed: s.completed || (Boolean(s.weight) || Boolean(s.reps))
+        }))
+      })),
       endTime: now,
       duration: finalDuration
     };

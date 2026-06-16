@@ -222,6 +222,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
       })
     };
     setSelectedWorkout(updated);
+    onUpdateWorkout(updated);
   };
 
   const handleRemoveSet = (exerciseId: string, setId: string) => {
@@ -239,6 +240,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
        })
      };
      setSelectedWorkout(updated);
+     onUpdateWorkout(updated);
   };
 
   const handleToggleSetCompleted = (exerciseId: string, setId: string) => {
@@ -261,6 +263,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
       })
     };
     setSelectedWorkout(updated);
+    onUpdateWorkout(updated);
   };
 
   const handleAddSet = (exerciseId: string) => {
@@ -279,6 +282,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
       })
     };
     setSelectedWorkout(updated);
+    onUpdateWorkout(updated);
   };
 
   const handleAddExercise = (exercise: Exercise) => {
@@ -296,10 +300,12 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
         }
       ]
     };
-    setSelectedWorkout({
+    const updated = {
       ...selectedWorkout,
       exercises: [...selectedWorkout.exercises, newExercise]
-    });
+    };
+    setSelectedWorkout(updated);
+    onUpdateWorkout(updated);
     setShowAddExercise(false);
   };
 
@@ -520,7 +526,11 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
         <div className="space-y-6">
           {selectedWorkout.exercises.map((we) => {
             const completedSets = we.sets.filter(s => s.completed);
-            if (completedSets.length === 0) return null;
+            const displaySets = isEditingSets ? we.sets : we.sets.filter(s => s.completed || s.weight || s.reps);
+            if (displaySets.length === 0 && we.sets.length > 0 && !isEditingSets) {
+              // Show it anyway if it's completely empty? No, displaySets checks if anything was entered
+            }
+            if (displaySets.length === 0 && !isEditingSets) return null; // Only hide if nothing was entered at all and not editing
 
             const stats = getExerciseStats(workouts, selectedWorkout, we.exercise.id, we.id);
 
@@ -608,7 +618,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
                       </button>
                     </>
                   ) : (
-                    completedSets.map((set, idx) => {
+                    displaySets.map((set, idx) => {
                       let diffElement = null;
                       if (stats?.previousWe) {
                         const prevSets = stats.previousWe.sets.filter(s => s.completed);
