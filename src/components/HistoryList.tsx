@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { formatTime, formatDate, generateId, calculateProgression } from '../utils';
+import { formatTime, formatDate, generateId, calculateProgression, isSetValid } from '../utils';
 import { Workout, WorkoutExercise, WorkoutTemplate, Exercise } from '../types';
 import { Calendar, Clock, ChevronRight, Dumbbell, History, Trash2, Search, Trophy, TrendingUp, TrendingDown, FileText, Check, Edit2, Activity, BookmarkPlus, Plus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -41,7 +41,7 @@ function getExerciseStats(allWorkouts: Workout[], selectedWorkout: Workout, exer
   let prevVolume = 0;
 
   // Calculate current volume
-  currentWe.sets.filter(s => s.completed).forEach(s => {
+  currentWe.sets.filter(s => isSetValid(s)).forEach(s => {
     currentVolume += (Number(s.weight) || 0) * (Number(s.reps) || 0);
   });
 
@@ -59,7 +59,7 @@ function getExerciseStats(allWorkouts: Workout[], selectedWorkout: Workout, exer
 
     weList.forEach(we => {
       let vol = 0;
-      we.sets.filter(s => s.completed).forEach(s => {
+      we.sets.filter(s => isSetValid(s)).forEach(s => {
         const weight = Number(s.weight) || 0;
         const reps = Number(s.reps) || 0;
         
@@ -79,7 +79,7 @@ function getExerciseStats(allWorkouts: Workout[], selectedWorkout: Workout, exer
   }
 
   if (previousWe) {
-    previousWe.sets.filter(s => s.completed).forEach(s => {
+    previousWe.sets.filter(s => isSetValid(s)).forEach(s => {
       prevVolume += (Number(s.weight) || 0) * (Number(s.reps) || 0);
     });
   }
@@ -122,7 +122,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
     const exercisesMap = new Map<string, { id: string, name: string }>();
     workouts.forEach(w => {
       w.exercises.forEach(we => {
-        if (we.sets.some(s => s.completed)) {
+        if (we.sets.some(s => isSetValid(s))) {
           exercisesMap.set(we.exercise.id, { id: we.exercise.id, name: we.exercise.name });
         }
       });
@@ -146,7 +146,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
     for (const w of chronoSorted) {
       const we = w.exercises.find(e => e.exercise.id === selectedExerciseId);
       if (we) {
-        const completedSets = we.sets.filter(s => s.completed);
+        const completedSets = we.sets.filter(s => isSetValid(s));
         if (completedSets.length > 0) {
           const maxObjW = Math.max(...completedSets.map(s => Number(s.weight) || 0));
           const maxW = maxObjW === 0 ? null : maxObjW;
@@ -525,8 +525,8 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
 
         <div className="space-y-6">
           {selectedWorkout.exercises.map((we) => {
-            const completedSets = we.sets.filter(s => s.completed);
-            const displaySets = isEditingSets ? we.sets : we.sets.filter(s => s.completed || s.weight || s.reps);
+            const completedSets = we.sets.filter(s => isSetValid(s));
+            const displaySets = isEditingSets ? we.sets : we.sets.filter(s => isSetValid(s));
             if (displaySets.length === 0 && we.sets.length > 0 && !isEditingSets) {
               // Show it anyway if it's completely empty? No, displaySets checks if anything was entered
             }
@@ -580,7 +580,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
                   {isEditingSets ? (
                     <>
                       {we.sets.map((set, idx) => (
-                        <div key={set.id} className={`flex items-center gap-2 text-sm font-mono rounded-lg p-2 ${set.completed ? 'bg-neon/5 border-neon/20' : 'bg-neutral-950/50 border-neutral-800'} border`}>
+                        <div key={set.id} className={`flex items-center gap-2 text-sm font-mono rounded-lg p-2 ${isSetValid(set) ? 'bg-neon/5 border-neon/20' : 'bg-neutral-950/50 border-neutral-800'} border`}>
                           <div className="w-6 text-center text-neutral-500 font-bold">{idx + 1}</div>
                           <input 
                             type="number" 
@@ -598,7 +598,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
                           />
                           <button 
                             onClick={() => handleToggleSetCompleted(we.id, set.id)}
-                            className={`flex-1 flex justify-center py-2 rounded-lg transition-colors ${set.completed ? 'bg-neon text-black' : 'bg-neutral-800 text-neutral-400 hover:text-white'}`}
+                            className={`flex-1 flex justify-center py-2 rounded-lg transition-colors ${isSetValid(set) ? 'bg-neon text-black' : 'bg-neutral-800 text-neutral-400 hover:text-white'}`}
                           >
                             <Check size={14} />
                           </button>
@@ -621,7 +621,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
                     displaySets.map((set, idx) => {
                       let diffElement = null;
                       if (stats?.previousWe) {
-                        const prevSets = stats.previousWe.sets.filter(s => s.completed);
+                        const prevSets = stats.previousWe.sets.filter(s => isSetValid(s));
                         const prevSet = prevSets[idx];
                         if (prevSet) {
                           const weightDiff = (Number(set.weight) || 0) - (Number(prevSet.weight) || 0);
@@ -831,7 +831,7 @@ export function HistoryList({ workouts, onDeleteWorkout, onUpdateWorkout, onSave
       ) : (
         <div className="space-y-3">
           {filteredWorkouts.map(workout => {
-            const completedExercisesCount = workout.exercises.filter(we => we.sets.some(s => s.completed)).length;
+            const completedExercisesCount = workout.exercises.filter(we => we.sets.some(s => isSetValid(s))).length;
             
             return (
               <button 

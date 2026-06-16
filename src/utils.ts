@@ -27,6 +27,9 @@ export function formatDate(timestamp: number): string {
   }).format(date);
 }
 
+export const isSetValid = (s: { completed: boolean; weight: string | number; reps: string | number }) => 
+  s.completed || Boolean(s.weight) || Boolean(s.reps);
+
 export function calculateProgression(exerciseId: string, setIndex: number, pastWorkouts: Workout[], currentWorkoutId?: string) {
   if (!pastWorkouts || pastWorkouts.length === 0) return null;
   
@@ -50,10 +53,10 @@ export function calculateProgression(exerciseId: string, setIndex: number, pastW
             let sugReps = pastReps;
             
             // Intelligent progression
-            if (pastReps >= 8 && referenceSet.completed) {
+            if (pastReps >= 8 && isSetValid(referenceSet)) {
                sugWeight += 2.5; // Progressive overload
                sugReps = Math.max(6, pastReps - 2); // Drop reps slightly for heavier weight, minimum 6
-            } else if (pastReps < 5 && referenceSet.completed) {
+            } else if (pastReps < 5 && isSetValid(referenceSet)) {
                sugReps += 1; // Same weight, push for more reps
             }
             

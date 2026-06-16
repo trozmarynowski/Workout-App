@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CATEGORIES, EXERCISES } from '../data';
 import { Exercise, Workout, MuscleGroup } from '../types';
 import { Search, X, ChevronDown, Plus, BarChart2, Calendar, Dumbbell } from 'lucide-react';
-import { formatDate, generateId } from '../utils';
+import { formatDate, generateId, isSetValid } from '../utils';
 
 interface ExerciseDatabaseProps {
   onSelectExercise?: (exercise: Exercise) => void;
@@ -58,8 +58,8 @@ export function ExerciseDatabase({ onSelectExercise, selectionMode = false, onCa
     
     sorted.forEach(w => {
       const we = w.exercises.find(e => e.exercise.id === exerciseId);
-      if (we && we.sets.some(s => s.completed)) {
-        const completedSets = we.sets.filter(s => s.completed);
+      if (we && we.sets.some(s => isSetValid(s))) {
+        const completedSets = we.sets.filter(s => isSetValid(s));
         let vol = 0;
         completedSets.forEach(s => {
            const weight = Number(s.weight) || 0;
@@ -80,7 +80,7 @@ export function ExerciseDatabase({ onSelectExercise, selectionMode = false, onCa
       }
     });
 
-    return { maxWeight, maxReps, maxVolume, recentWorkouts, totalTimes: sorted.filter(w => w.exercises.some(e => e.exercise.id === exerciseId && e.sets.some(s => s.completed))).length };
+    return { maxWeight, maxReps, maxVolume, recentWorkouts, totalTimes: sorted.filter(w => w.exercises.some(e => e.exercise.id === exerciseId && e.sets.some(s => isSetValid(s)))).length };
   };
 
   const handleAddCustom = () => {

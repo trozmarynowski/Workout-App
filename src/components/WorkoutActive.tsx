@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Workout, WorkoutExercise, SetData, Exercise } from '../types';
-import { formatTime, generateId, calculateProgression } from '../utils';
+import { formatTime, generateId, calculateProgression, isSetValid } from '../utils';
 import { Play, Plus, Trash2, Check, X, Timer } from 'lucide-react';
 import { ExerciseDatabase } from './ExerciseDatabase';
 import { RestTimer } from './RestTimer';
@@ -279,7 +279,7 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className={`flex items-center gap-1.5 rounded-lg p-1.5 transition-colors ${set.completed ? 'bg-neon/10 border border-neon/20' : 'bg-neutral-950/50 border border-neutral-800'}`}
+                      className={`flex items-center gap-1.5 rounded-lg p-1.5 transition-colors ${isSetValid(set) ? 'bg-neon/10 border border-neon/20' : 'bg-neutral-950/50 border border-neutral-800'}`}
                     >
                       <div className="w-8 text-center flex items-center justify-center">
                         <div className="text-neutral-500 font-mono text-sm">
@@ -292,7 +292,7 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
                           value={set.weight}
                           onChange={(e) => handleUpdateSet(we.id, set.id, 'weight', e.target.value)}
                           placeholder="-"
-                          className={`w-full text-center py-2.5 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-neon transition-all ${set.completed ? 'bg-transparent text-white focus:bg-neutral-900' : 'bg-neutral-900 text-white'}`}
+                          className={`w-full text-center py-2.5 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-neon transition-all ${isSetValid(set) ? 'bg-transparent text-white focus:bg-neutral-900' : 'bg-neutral-900 text-white'}`}
                         />
                       </div>
                       <div className="flex-1 relative">
@@ -301,16 +301,16 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
                           value={set.reps}
                           onChange={(e) => handleUpdateSet(we.id, set.id, 'reps', e.target.value)}
                           placeholder="-"
-                          className={`w-full text-center py-2.5 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-neon transition-all ${set.completed ? 'bg-transparent text-white focus:bg-neutral-900' : 'bg-neutral-900 text-white'}`}
+                          className={`w-full text-center py-2.5 rounded-lg font-mono focus:outline-none focus:ring-1 focus:ring-neon transition-all ${isSetValid(set) ? 'bg-transparent text-white focus:bg-neutral-900' : 'bg-neutral-900 text-white'}`}
                         />
                       </div>
                       <div className="w-10 flex justify-center">
                         <motion.button 
                           whileTap={{ scale: 0.9 }}
                           onClick={() => handleToggleSet(we.id, set.id)}
-                          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors overflow-hidden ${set.completed ? 'bg-neon text-black' : 'bg-neutral-800 text-neutral-500 shadow-inner'}`}
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors overflow-hidden ${isSetValid(set) ? 'bg-neon text-black' : 'bg-neutral-800 text-neutral-500 shadow-inner'}`}
                         >
-                          {set.completed ? (
+                          {isSetValid(set) ? (
                             <motion.div
                               initial={{ scale: 0, rotate: -45 }}
                               animate={{ scale: 1, rotate: 0 }}
@@ -324,7 +324,6 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
                         </motion.button>
                       </div>
                       <div className="w-8 flex justify-center">
-                        {!set.completed && (
                           <button
                             onClick={() => {
                               if (window.confirm('Usunąć tę serię?')) {
@@ -335,7 +334,6 @@ export function WorkoutActive({ workout, pastWorkouts = [], onUpdateWorkout, onF
                           >
                             <Trash2 size={14} />
                           </button>
-                        )}
                       </div>
                     </motion.div>
                   ))}
